@@ -4,8 +4,9 @@ komon is a golang library for common utilities.
 
 ## Features
 
+- cache 
 - logger
 - tracer
-- lock
+- lock (distributed locking)
 - pagination
-- xerr (error handling)
+- fail (error handling)

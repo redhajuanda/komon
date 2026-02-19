@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -25,10 +26,27 @@ var redisSentinelServers = []string{
 	"tcp://127.0.0.1:26379",
 }
 
-func TestBasicLock(t *testing.T) {
+// skipIfRedisUnavailable skips the test if any of the required Redis servers
+// are not reachable, so integration tests are silently skipped in environments
+// without Redis (e.g. plain `go test ./...`).
+func skipIfRedisUnavailable(t *testing.T, addrs ...string) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
+	for _, addr := range addrs {
+		// addrs are in "tcp://host:port" form; strip the scheme first.
+		host := strings.TrimPrefix(addr, "tcp://")
+		conn, err := net.DialTimeout("tcp", host, 200*time.Millisecond)
+		if err != nil {
+			t.Skipf("skipping integration test: redis not available at %s", host)
+		}
+		conn.Close()
+	}
+}
+
+func TestBasicLock(t *testing.T) {
+	skipIfRedisUnavailable(t, redisServers...)
 
 	ctx := context.Background()
 	lock, err := NewRedLock(redisServers)
@@ -41,9 +59,7 @@ func TestBasicLock(t *testing.T) {
 }
 
 func TestBasicLockSentinel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisSentinelServers...)
 
 	ctx := context.Background()
 	lock, err := NewRedLockSentinel(redisSentinelServers)
@@ -56,9 +72,7 @@ func TestBasicLockSentinel(t *testing.T) {
 }
 
 func TestUnlockExpiredKey(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	ctx := context.Background()
 	lock, err := NewRedLock(redisServers)
@@ -72,9 +86,7 @@ func TestUnlockExpiredKey(t *testing.T) {
 }
 
 func TestUnlockExpiredKeySentinel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisSentinelServers...)
 
 	ctx := context.Background()
 	lock, err := NewRedLockSentinel(redisSentinelServers)
@@ -151,9 +163,7 @@ type countResp struct {
 }
 
 func TestSimpleCounter(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	routines := 5
 	inc := 100
@@ -178,9 +188,7 @@ func TestSimpleCounter(t *testing.T) {
 }
 
 func TestParseConnString(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers[0])
 
 	testCases := []struct {
 		addr    string
@@ -210,9 +218,7 @@ func TestParseConnString(t *testing.T) {
 }
 
 func TestNewRedLockError(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers[0])
 
 	testCases := []struct {
 		addrs   []string
@@ -233,9 +239,7 @@ func TestNewRedLockError(t *testing.T) {
 }
 
 func TestRedlockSetter(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	lock, err := NewRedLock(redisServers)
 	assert.Nil(t, err)
@@ -254,9 +258,7 @@ func TestRedlockSetter(t *testing.T) {
 }
 
 func TestRedlockSetterSentinel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisSentinelServers...)
 
 	lock, err := NewRedLockSentinel(redisSentinelServers)
 	assert.Nil(t, err)
@@ -275,9 +277,7 @@ func TestRedlockSetterSentinel(t *testing.T) {
 }
 
 func TestAcquireLockFailed(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	ctx := context.Background()
 	servers := make([]string, 0, len(redisServers))
@@ -314,9 +314,7 @@ func TestAcquireLockFailed(t *testing.T) {
 }
 
 func TestLockContext(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -345,9 +343,7 @@ func TestLockContext(t *testing.T) {
 }
 
 func TestLockContextSentinel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisSentinelServers...)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -398,9 +394,7 @@ func testKVCacheWrap(t *testing.T, cacheType string) {
 }
 
 func TestKVCache(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	skipIfRedisUnavailable(t, redisServers...)
 
 	testKVCacheWrap(t, CacheTypeSimple)
 	testKVCacheWrap(t, CacheTypeFreeCache)
