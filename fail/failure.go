@@ -79,15 +79,20 @@ func Wrapf(err error, format string, args ...any) *Fail {
 	}
 
 	if f, ok := err.(*Fail); ok {
+
+		if f.originalError != nil {
+			return f
+		}
+
 		return &Fail{
 			public:        f.public,
-			originalError: errors.WithStackDepth(errors.Wrapf(f.originalError, format, args...), 2),
+			originalError: errors.WrapWithDepthf(1, f.originalError, format, args...),
 			data:          f.data,
 		}
 	}
 
 	return &Fail{
-		originalError: errors.WithStackDepth(errors.Wrapf(err, format, args...), 2),
+		originalError: errors.WrapWithDepthf(1, err, format, args...),
 	}
 }
 
