@@ -1,1 +1,0 @@
-This package is copied and modified from https://github.com/nladuo/go-zk-lock
